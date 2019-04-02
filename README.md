@@ -58,7 +58,7 @@ In order to run this bot locally you are first going to need a tunneling softwar
 9. In terminal session b, launch the slack bot
     ```bash
     pip3 install -r requirements.txt
-    python3 slackbot_events_api_example.py
+    python3 main.py
     ```
 
 ### DB Setup
