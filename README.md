@@ -1,5 +1,11 @@
-# Slackbot Events Api Example
-This is a basic example of how to build a slack bot using the events API.
+<h1 align="center">
+  <br>
+  <a href="#"><img src="https://www.spaceotechnologies.com/wp-content/themes/spaceotechnologies/images/services/slack-development/slackdroid.png" alt="Markdownify" width="200"></a>
+  <br>
+  Slackbot Events Api Example
+</h1>
+
+
 
 ## Main Features
 1. Create runnable services by running custom scripts
