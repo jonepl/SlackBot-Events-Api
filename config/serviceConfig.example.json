@@ -1,0 +1,29 @@
+[
+    {
+        "name" : "Name of your service",
+        "type" : "script",
+        "language" : "python3",
+        "filepath" : "services/scripts/yourFile1.py",
+        "description" : "Short Description of your service",
+        "arguments" : [
+            {
+                "name" : "arg1",
+                "dataType" : "string",
+                "placeholder" : "placeHolder1"
+            },
+            {
+                "name" : "arg2",
+                "dataType" : "string",
+                "placeholder" : "placeholder"
+            }
+        ]
+    },
+    {
+        "name" : "Name of your service",
+        "type" : "script",
+        "language" : "python3",
+        "filepath" : "services/scripts/yourFile2.py",
+        "description" : "Short Description of your service",
+        "arguments" : []
+    }
+]
