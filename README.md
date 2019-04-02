@@ -68,7 +68,6 @@ Currently this application use MongoDB to store service data. You can get a 0.5 
 
 
 ## References
-[Coming Soon](https://www.youtube.com/watch?v=EYxAhK_eDx0)
 
 Helpful Video: https://www.youtube.com/watch?v=EYxAhK_eDx0&t=168s
 Thanks: https://github.com/CoffeeCodeAndCreatine
