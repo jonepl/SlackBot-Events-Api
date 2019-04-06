@@ -37,7 +37,7 @@ class SlashCommandHandler():
 
     def createSubscriptionDialog(self, arguments=[], serviceName="") :
 
-        serviceOptions = self._createDialogOptions(self.financeBot.getServiceHandler().getServicesNames())
+        serviceOptions = self._createDialogOptions(self.financeBot.getServiceHandler().getServices())
         periodOptions = self._createDialogOptions(self.financeBot.getScheduler().getPeriodicity())
         
 
@@ -47,13 +47,12 @@ class SlashCommandHandler():
             "state" : serviceName,
             "callback_id": "subscribe",
             "elements": [
-                # {
-                #     "label": "Services",
-                #     "type": "select",
-                #     "name": "service",
-                #     "placeholder": "Select a Service",
-                #     "options": serviceOptions 
-                # },
+                {
+                    "label": "Description",
+                    "type": "text",
+                    "name": "description",
+                    "placeholder": "Description",
+                },
                 {
                     "label": "Duration",
                     "type": "select",
@@ -82,7 +81,7 @@ class SlashCommandHandler():
         if (text == None) :
             text = "Select a service"
         if (options == None) :
-            options = self._createActionOptions(self.financeBot.getServiceHandler().getServicesNames())
+            options = self._createActionOptions(self.financeBot.getServiceHandler().getServices())
         else :
             options = self._createActionOptions(options)
         if (action == None) :
@@ -132,7 +131,7 @@ class SlashCommandHandler():
             }
 
             blocks.append(content)
-            
+
             if( idx != len(services)-1 ) :
                 blocks.append(divider)
 
@@ -142,25 +141,34 @@ class SlashCommandHandler():
     def _createDialogOptions(self, items) :
 
         options = []
-        #options = ["Intro Service", "External Service", "Fundament Analysis"]
 
+        # FIXME Bad Code for Periodiciy
+        
         for item in items :
-            option = {
-                "label" : item,
-                "value" : item
-            }
+            if isinstance(item, dict) :
+                option = {
+                    "label" : item.get("serviceName"),
+                    "value" : item.get("serviceName")
+                }
+            else :
+                option = {
+                        "label" : item,
+                        "value" : item
+                    }
             options.append(option)
         
         return options
 
-    def _createActionOptions(self, items) :
+    # https://api.slack.com/docs/interactive-message-field-guide#option_fields
+    def _createActionOptions(self, services) :
         options = []
         #options = ["Intro Service", "External Service", "Fundament Analysis"]
 
-        for item in items :
+        for service in services :
             option = {
-                "text" : item,
-                "value" : item
+                "text" : service.get("name"),
+                "value" : service.get("_id") if service.get("_id") != None else service.get("name"),
+                "description" : service.get("description")
             }
             options.append(option)
         

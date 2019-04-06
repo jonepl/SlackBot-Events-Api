@@ -4,7 +4,7 @@ Description: Responsible for scheduling tasks (Services) within the application
 '''
 
 import time, schedule, pymongo, re, datetime
-
+from bson.objectid import ObjectId
 from threading import Thread
 
 PEROIDICITY = ["Testingly", "Hourly", "Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "Semi-annually", "Annually"]
@@ -46,6 +46,7 @@ class Scheduler(Thread) :
             except(KeyboardInterrupt, SystemError) :
                 self.running = False
 
+    # FIXME: Dependency on ServiceHandler
     def addSubscription(self, request) :
         job = self.sanitizeRequest(request)
         successful = self.scheduleJob(job)
@@ -53,8 +54,12 @@ class Scheduler(Thread) :
             successful = self.saveJob(job)
         return successful
 
-    def removeSubscription(self, request) :
-        print("Implement removal of subscription will multiple service names")
+    # FIXME: Dependency on ServiceHandler
+    def removeSubscription(self, job) :
+        successful = self.unscheduleJob(job)
+        if(successful) :
+            successful = self.deleteJob(job)
+        return successful
 
     def sanitizeRequest(self, request) :
         request["submission"]["time"] = self.convertTime(request.get("submission").get("time"))
@@ -99,14 +104,14 @@ class Scheduler(Thread) :
         for job in jobs :
             successful = self.scheduleJob(job)
             if(successful) : 
-                self.addUserToSubscription(self.produceTag(job))
+                self.addUserToSubscription(job)
 
     # Helper method: Adds a new intra-day schedule job
     def scheduleJob(self, job) :
         
         status = True
         tag = self.produceTag(job)
-        serviceName = job.get('serviceName')
+        serviceName = job.get("name")
         func = self.financeBot.getServiceHandler().runService
 
         # Grabs scheduling arguments
@@ -175,7 +180,7 @@ class Scheduler(Thread) :
             dbResult = self.collection.insert_one(subscription)
             successful = dbResult.acknowledged
             if(successful) : 
-                self.addUserToSubscription(self.produceTag(subscription))
+                self.addUserToSubscription(subscription)
         else :
             print("User id {} is already subscribed to service {}".format(user, service))
             successful = False
@@ -183,16 +188,16 @@ class Scheduler(Thread) :
         return successful
 
     # Removes reoccuring job to DB
-    def deleteJob(self, subscription) :
+    def deleteJob(self, job) :
 
-        tag = self.produceTag(subscription)
-        user = subscription.get("user")
-        serviceName = subscription.get("serviceName")
+        tag = self.produceTag(job)
+        user = job.get("user")
+        serviceName = job.get("name")
         
         if(self.subscriptionExists(tag)) :
 
             # FIXME: Research how to remove subscription
-            query = { "serviceName" :  serviceName, "user" : user }
+            query = { "_id" :  ObjectId(job.get("_id"))}
             dbStat = self.collection.remove(query)
 
             if(dbStat['n'] <= 0) : 
@@ -200,7 +205,7 @@ class Scheduler(Thread) :
                 return False
                 
             else :
-                self.removeUserFromSubscription(self.produceTag(subscription))
+                self.removeUserFromSubscription(job)
                 print("Mongdo DB document for tag {} has been properly removed.")
                 return True
         else :
@@ -211,9 +216,9 @@ class Scheduler(Thread) :
     def updateJob(self, subscription) :
         
         user = subscription.get("user")
-        service = subscription.get("serviceName")
+        serviceName = subscription.get("name")
 
-        query = { "user" : user, "serviceName" : service }
+        query = { "user" : user, "name" : serviceName }
 
         update = { "$set": { 
             "frequency": subscription.get('frequency'),
@@ -237,35 +242,44 @@ class Scheduler(Thread) :
         return status
 
     # Adds a user to the local user subscription list
-    def addUserToSubscription(self, tag) :
+    def addUserToSubscription(self, job) :
 
-        userId, service = tag.split("_")
+        userId = job.get("user")
+        serviceName = job.get("name")
+        subscription = {
+            "_id" : str(job.get("_id")),
+            "name" : serviceName,
+            "description" : job.get("submission").get("description")
+        }
 
-        if(self.debug) : logger.debug("service: {} userId: {} userSubscriptions: {}".format(service, userId, self.usersSubscriptions))
+        if(self.debug) : logger.debug("Service name: {} userId: {} userSubscriptions: {}".format(serviceName, userId, self.usersSubscriptions))
 
         if(userId in self.usersSubscriptions) :
 
-            self.usersSubscriptions[userId].append(service)
-            if(self.debug) : logger.debug("Added additional service to {}.".format(userId))
+            self.usersSubscriptions[userId].append(subscription)
+            if(self.debug) : logger.debug("Added additional service Name to {}.".format(userId))
         else :
             self.usersSubscriptions[userId] = []
             if(self.debug) : logger.debug("Adding new userId to usersSubscriptions")
                
-            self.usersSubscriptions[userId].append(service)
-            if(self.debug) : logger.debug("Service: {} userId: {} added to userSubscriptions: {}".format(service, userId, self.usersSubscriptions))
+            self.usersSubscriptions[userId].append(subscription)
+            if(self.debug) : logger.debug("service Name: {} userId: {} added to userSubscriptions: {}".format(serviceName, userId, self.usersSubscriptions))
 
     # Removes a user to the local user subscription list
-    def removeUserFromSubscription(self, tag) :
+    # TODO: Finish remove and Uniquely identifying in Slack
+    def removeUserFromSubscription(self, job) :
 
-        userId, service = tag.split("_")
+        userId = job.get("user")
+        _id = job.get("_id")
+        service = job.get("name")
 
         if(userId in self.usersSubscriptions) :
             
-            if(service in self.usersSubscriptions[userId]) :
-                self.usersSubscriptions[userId].remove(service)
-            else :
-                print("Tag {} does not exits. Can't remove".format(tag))
+            for service in self.usersSubscriptions[userId] :
+                if(_id in service.get("_id")) :
+                    self.usersSubscriptions[userId].remove(service)
 
+            # Removes user from dict if user has no subscriptions
             if(not self.usersSubscriptions[userId]) :
                 del self.usersSubscriptions[userId]
         else :
@@ -273,16 +287,17 @@ class Scheduler(Thread) :
 
     # Produces an job identifier
     def produceTag(self, subscription) :
-        return subscription.get('user') + "_" + subscription.get('serviceName')
+        return subscription.get('user') + "_" + subscription.get("name")
 
     # Determines if there is a user subscription that exists for a given tag
     def subscriptionExists(self, tag) :
 
-        userId, service = tag.split("_")
+        userId, serviceName = tag.split("_")
 
         if(userId in self.usersSubscriptions) : 
-            if(service in self.usersSubscriptions[userId]) :
-                return True
+            for subscription in self.usersSubscriptions[userId] :
+                if(serviceName in subscription.get("name")) :
+                    return True
         else : return False
 
     def getUsersSubscriptions(self) :
@@ -290,3 +305,15 @@ class Scheduler(Thread) :
     
     def getPeriodicity(self) :
         return PEROIDICITY
+
+    def getSubscriptionById(self, user, _id) :
+
+        subscriptions = self.usersSubscriptions.get(user)
+
+        if(subscriptions != None) :
+            for subscription in subscriptions :
+                if(_id == subscription.get("_id")) :
+                    subscription["user"] = user
+                    return subscription
+        
+        return {}

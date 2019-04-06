@@ -85,6 +85,7 @@ class ServiceHandler(Thread) :
 
         if(message.get('type') == "interactive_message") :
             dialog = {}
+            #FIXME: Bad Code
             serviceName = message.get('actions')[0]["selected_options"][0].get("value")
             arguments = self.getServiceArguments(serviceName)
 
@@ -100,8 +101,10 @@ class ServiceHandler(Thread) :
                     dialog = self.financeBot.getSlashCommandHandler().createServiceDialog(arguments=arguments, serviceName=serviceName)
 
             elif(message.get("actions")[0]["name"] == "unsubscribe") :
-                request = {}
-                successful = self.financeBot.getScheduler().removeSubscription(request)
+                _id = message.get('actions')[0]["selected_options"][0].get("value")
+                subscription = self.financeBot.getScheduler().getSubscriptionById(message.get("user"), _id)
+                serviceName = subscription.get("name")
+                successful = self.financeBot.getScheduler().removeSubscription(subscription)
 
             else :
                 print("Some thing bad happened")
@@ -130,11 +133,11 @@ class ServiceHandler(Thread) :
             if(len(usersServices) != 0) :
 
                 attachments = self.financeBot.getSlashCommandHandler().createAttachments(text="Select which service you would like to unsubscribe from.", options=usersServices, action="unsubscribe")
-                self.financeBot.respond({}, text="Which service would you like to subscribe to?", rType="text", channel=message.get("channel"), attachments=attachments)
+                self.financeBot.respond({}, text="Which service would you like to unsubscribe to?", rType="text", channel=message.get("channel"), attachments=attachments)
             else :
                 self.financeBot.respond({}, text="You are not currently subscribed to any services.", rType="text", channel=message.get('channel'), user=message.get('user'))
 
-        elif ("subscribe" in message.get("text")) :
+        elif ("subscribe" in message.get("text").lower()) :
             attachments = self.financeBot.getSlashCommandHandler().createAttachments(text="Select which service you would like to subscribe to.", action="subscribe")
             self.financeBot.respond({}, text="Which service would you like to subscribe to?", rType="text", channel=message.get("channel"), attachments=attachments)
         
@@ -161,7 +164,7 @@ class ServiceHandler(Thread) :
             serviceName = message.get("state")
 
             request = {}
-            request["serviceName"] = serviceName
+            request["name"] = serviceName
             request["user"] = message.get("user")
             request["channel"] = message.get("channel")
             request["submission"] = message.get("submission") if message.get("submission") != None else {}
@@ -175,7 +178,7 @@ class ServiceHandler(Thread) :
             request = {
                 "user" : message.get("user"),
                 "channel" : message.get("channel"),
-                "serviceName" : message.get("state"),
+                "name" : message.get("state"),
                 "submission" : message.get("submission")
             }
 
@@ -199,6 +202,9 @@ class ServiceHandler(Thread) :
         for services in self.services :
             serviceNames.append(services['name'])
         return serviceNames
+
+    def getServices(self) :
+        return self.services
 
     # Determines if a service is runnable
     def isRunnableService(self, serviceName) :
@@ -305,12 +311,12 @@ class ServiceHandler(Thread) :
 
     # Produces an job identifier
     def produceTag(self, subscription) :
-        return subscription.get('user') + "_" + subscription.get('serviceName')
+        return subscription.get('user') + "_" + subscription.get('name')
 
     #TODO: Finsh this
     def runService(self, request) :
         # Write so runs without args works
-        service = self.getServiceDetails(request.get("serviceName"))
+        service = self.getServiceDetails(request.get("name"))
         service["user"] = request.get("user")
         service["channel"] = request.get("channel")
 
@@ -333,7 +339,7 @@ class ServiceHandler(Thread) :
                 self.financeBot.respond({}, text = response.get("content"), rType="file", user=service.get("user"), channel=service.get("channel"))
         else :
 
-            self.financeBot.respond({}, text = "There was an issue running {} Service".format(request.get("serviceName")), rType="text", user=service.get("user"), channel=service.get("channel"))
+            self.financeBot.respond({}, text = "There was an issue running {} Service".format(request.get("name")), rType="text", user=service.get("user"), channel=service.get("channel"))
 
     def validateServiceOutput(self, output) :
 
@@ -375,7 +381,7 @@ class ServiceHandler(Thread) :
         else :
             text = "You are currently Subscribed to:\n"
             for index, myService in enumerate(myServices) :
-                text += "\t{}. {}\n".format(index+1, myService)
+                text += "\t{}. {}\n".format(index+1, myService.get("name"))
         return text
 
     # List of the services link to a userId
