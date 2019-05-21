@@ -8,9 +8,6 @@ Info: List of Events can be found https://api.slack.com/events. Make
 import logging, json, queue as Queue, threading
 from slackeventsapi import SlackEventAdapter
 from flask import Flask, jsonify, Response, request
-from app.FinanceBot import FinanceBot
-from app.MessageHandler import MessageHandler
-from app.SlackWebApi import SlackWebApi
 
 config = {}
 with open('config/creds.json') as json_data:
@@ -38,7 +35,7 @@ def handleSlashCommand():
     financeBot.getSlashCommandHandler().handle(message)
     return Response(), 200
 
-# Handles all dialog commands. You must configure dialog commands within your app at www.api.slack.com
+# Handles all interactive messages commands. You must configure dialog commands within your app at www.api.slack.com
 @app.route("/dialog", methods=["POST"])
 def handleDialog() :
     message = json.loads(request.values.to_dict()['payload'])

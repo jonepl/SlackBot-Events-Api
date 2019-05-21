@@ -6,7 +6,7 @@ Description: Responsible for scheduling tasks (Services) within the application
 import time, schedule, pymongo, re, datetime
 from bson.objectid import ObjectId
 from threading import Thread
-
+# FIXME: Collapse into one thing
 PEROIDICITY = ["Testingly", "Hourly", "Daily", "Weekly", "Bi-weekly", "Monthly", "Quarterly", "Semi-annually", "Annually"]
 PERIOD_MAPPER = {
         "Testingly" :("second", 20),
@@ -31,6 +31,7 @@ class Scheduler(Thread) :
         self.collection = db[ config['mongoDB']['collectionName'] ]       
         self.debug = debug
         self.financeBot = financeBot
+        self.services = financeBot.getServiceHandler().getServices()
         self.pending = {}
         self.usersSubscriptions = {}
 
@@ -48,10 +49,14 @@ class Scheduler(Thread) :
 
     # FIXME: Dependency on ServiceHandler
     def addSubscription(self, request) :
+        
         job = self.sanitizeRequest(request)
-        successful = self.scheduleJob(job)
+        successful = self.saveJob(job)
         if(successful) :
-            successful = self.saveJob(job)
+            successful = self.scheduleJob(job)
+        else :
+            # TODO: Undo changes
+            pass
         return successful
 
     # FIXME: Dependency on ServiceHandler
@@ -110,7 +115,8 @@ class Scheduler(Thread) :
     def scheduleJob(self, job) :
         
         status = True
-        tag = self.produceTag(job)
+
+        tag = job.get("_id")
         serviceName = job.get("name")
         func = self.financeBot.getServiceHandler().runService
 
@@ -118,7 +124,7 @@ class Scheduler(Thread) :
         frequency, unit = PERIOD_MAPPER[job.get("submission").get("duration")]
         time = job.get("submission").get("time").strftime("%H:%M")
 
-        if( not self.subscriptionExists(tag) ) :
+        if( not self.subscriptionExists(job) ) :
             args = job
 
             # NOTE: When would args be None?
@@ -153,7 +159,7 @@ class Scheduler(Thread) :
 
         if(self.debug) : logger.debug("Unscheduling Job ...")
 
-        tag = self.produceTag(subscription)
+        tag = subscription.get("_id")
         
         # : Figure out if a status can be evaluated
         schedule.clear(tag)
@@ -172,29 +178,23 @@ class Scheduler(Thread) :
     def saveJob(self, subscription):
         #FIXME: Use Mongo Schema to prevent ulgy jobs entrying db
         successful = False
-        user = subscription.get("user")
-        service = subscription.get("service")
-        tag = self.produceTag(subscription)
 
         if(True) :
             dbResult = self.collection.insert_one(subscription)
             successful = dbResult.acknowledged
             if(successful) : 
                 self.addUserToSubscription(subscription)
-        else :
-            print("User id {} is already subscribed to service {}".format(user, service))
-            successful = False
 
         return successful
 
     # Removes reoccuring job to DB
     def deleteJob(self, job) :
 
-        tag = self.produceTag(job)
+        tag = job.get("_id")
         user = job.get("user")
         serviceName = job.get("name")
         
-        if(self.subscriptionExists(tag)) :
+        if(self.subscriptionExists(job)) :
 
             # FIXME: Research how to remove subscription
             query = { "_id" :  ObjectId(job.get("_id"))}
@@ -285,14 +285,11 @@ class Scheduler(Thread) :
         else :
             print("No userId {} exists".format(userId))
 
-    # Produces an job identifier
-    def produceTag(self, subscription) :
-        return subscription.get('user') + "_" + subscription.get("name")
-
     # Determines if there is a user subscription that exists for a given tag
-    def subscriptionExists(self, tag) :
+    def subscriptionExists(self, job) :
 
-        userId, serviceName = tag.split("_")
+        userId = job.get("user")
+        serviceName = job.get("name")
 
         if(userId in self.usersSubscriptions) : 
             for subscription in self.usersSubscriptions[userId] :
@@ -313,7 +310,22 @@ class Scheduler(Thread) :
         if(subscriptions != None) :
             for subscription in subscriptions :
                 if(_id == subscription.get("_id")) :
-                    subscription["user"] = user
                     return subscription
         
         return {}
+
+    def getFullSubscriptions(self, user) :
+        
+        subscriptions = []
+        userSubscriptions = self.usersSubscriptions.get(user)
+
+        if(userSubscriptions != None) :
+            for userSubscription in userSubscriptions :
+                for service in self.services :
+                    if(userSubscription.get("name") == service.get("name")) :
+
+                        service["_id"] = userSubscription.get("_id")
+                        service["user"] = userSubscription.get("user")
+                        subscriptions.append(service)
+            return subscriptions
+

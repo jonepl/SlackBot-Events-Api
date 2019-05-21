@@ -7,6 +7,7 @@ import random, logging, json, threading, time, queue as Queue
 from threading import Thread
 
 from app.ServiceHandler import ServiceHandler
+from app.SlackMessage import SlackMessage
 
 # if not __name__ == '__main__':
 #     from app.SubscriptionHandler import SubscriptionHandler
@@ -41,6 +42,7 @@ class MessageHandler(Thread):
 
         self.financeBot = financeBot
         self.debug = debug
+        self.message = SlackMessage()
         
         if(self.debug) : logger.debug('MessageHandler successfully created')
 
@@ -88,16 +90,17 @@ class MessageHandler(Thread):
         channel = message.get('channel')
 
         text = None
-        responseType = 'text'
         response = {}
 
         if(self.isGreeting(userMessage)) :
             #if(self.debug) : logger.debug("Greeting found return random choice")
             text = random.choice(GREETING_RESPONSES)
-            self.financeBot.respond(message, text=text, rType='text')
+            response = self.message.simpleText(message, text)
+            self.financeBot.respond(response)
         
         elif(self.isNewMember(message)) :
-            self.financeBot.respond(message, text="Welcome to our slack Group.", rType='text')
+            response = self.message.simpleText(message, "Welcome to our slack Group.")
+            self.financeBot.respond(response)
 
         elif(self.isServiceRequest(userMessage)) :
             self.financeBot.getServiceHandlerQueue().put(message)
@@ -106,7 +109,8 @@ class MessageHandler(Thread):
             self.financeBot.getGoogleDocHandlerQueue().put(message)
         
         else :
-            print("Im not sure how to decipher \"" + self.stripTag(userMessage) + "\".")
+            response =  self.message.simpleText(message, "Im not sure how to decipher \"" + self.stripTag(userMessage) + "\".")
+            self.financeBot.respond(response)
 
     # Determines if a message contains a greeting word
     def isGreeting(self, userMessage) :

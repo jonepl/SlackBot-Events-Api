@@ -23,7 +23,7 @@ class SlackWebApi(object) :
 
     # This method updates a message in a channel.
     def updateMessage(self, channel, ts, text="", attachments=[], blocks=[]) :
-        return self.slack_client.api_call("chat.update", channel=channel, text=text, ts=ts, attachments=attachments)
+        return self.slack_client.api_call("chat.update", channel=channel, text=text, ts=ts, attachments=attachments, blocks=blocks)
 
     # Opens a form to start a interactive message dialog with a slack user
     def writeToDialog(self, dialog, trigger) :

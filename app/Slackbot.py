@@ -1,5 +1,5 @@
 '''
-File: FinanceBot.py
+File: Slackbot.py
 Description: Core class of the SlackBot application. All handlers and Scheduler class
              communicate to the Slack Servers using this class
 '''
@@ -11,8 +11,9 @@ from app.Scheduler import Scheduler
 from app.ServiceHandler import ServiceHandler
 from app.SlackWebApi import SlackWebApi
 from app.SlashCommandHandler import SlashCommandHandler
+from app.SlackMessageBuilder import SlackMessageBuilder
 
-class FinanceBot(Thread) :
+class Slackbot(Thread) :
     def __init__(self, config, sConfig, debug) :
         Thread.__init__(self)
         self.slackclient = SlackWebApi(config.get("slack_bot_token"))
@@ -22,7 +23,7 @@ class FinanceBot(Thread) :
         self.messageHandlerQueue = Queue.Queue()
         self.serviceHandlerQueue = Queue.Queue()
         self.schedulerQueue = Queue.Queue()
-
+        self.slackMessageBuilder = SlackMessageBuilder()
         self.messageHandler = MessageHandler(self, config, debug)
         self.serviceHandler = ServiceHandler(self, sConfig, debug)
         self.scheduler = Scheduler(self, config, debug)
@@ -88,36 +89,44 @@ class FinanceBot(Thread) :
     def getHistory(self, channel) :
         return self.slackclient.getHistory(channel)
 
-    # TODO: Use Finance Bot message to prepare handler data and send single object ot slackClient to use
-    def updateMessage(self, response, channel=None, ts=None, text=None, attachments=None) :
-        
-        response['text'] = text if text != None else response.get('text')
-        response['channel'] = channel if channel != None else response.get('channel')
-        response['ts'] = ts if ts != None else response.get('ts')
-        response['attachments'] = attachments if attachments != None else response.get('attachments')
-
-        self.slackclient.updateMessage(response.get("channel"), response.get("ts"), text=response.get("text"), attachments=response.get("attachments"))
+    def getSlackMessageBuilder(self) :
+        return self.slackMessageBuilder
 
     # Responds back to Slack
-    def respond(self, response, text=None, rType=None, channel=None, user=None, trigger=None, dialog=None, attachments=[], blocks=[]) :
+    def respond(self, response, text=None, rType=None, channel=None, user=None, trigger=None, dialog=None, attachments=[], blocks=[], ts=None) :
+
+        status = None
 
         response['text'] = text if text != None else response.get('text')
         response['type'] = rType if rType != None else response.get('type')
         response['channel'] = channel if channel != None else response.get('channel')
         response['user'] = user if user != None else response.get('user')
 
+        # Required Values
         channel = response.get("channel")
         text = response.get("text")
+        # Optional Values FIXME
+        if(response.get("blocks") != None) : blocks = response.get("blocks")
+        if(response.get("attachments") != None) : attachments = response.get("attachments")
+        if(response.get("filepath") != None) : filepath = response.get("filepath")
+        if(response.get("trigger") != None) : trigger = response.get("trigger")
+        if(response.get("dialog") != None) : dialog = response.get("dialog")
+        if(response.get("ts") != None) : ts = response.get("ts")
 
-        if(response.get('type') == 'text') :
-            self.slackclient.writeToSlack(channel, text, attachments, blocks)
+        if(response.get("ts") != None) :
+            status = self.slackclient.updateMessage(channel, ts, text=text, attachments=attachments, blocks=blocks)
+
+        elif(response.get('type') == 'text') :
+            status = self.slackclient.writeToSlack(channel, text, attachments, blocks)
         elif(response.get('type') == 'file') :
             filepath = response.get('text')
-            self.slackclient.writeToFile(channel, filepath)
+            status = self.slackclient.writeToFile(channel, filepath)
         elif(response.get('type') == 'dialog') :
-            self.slackclient.writeToDialog(trigger=trigger, dialog=dialog)
+            status = self.slackclient.writeToDialog(trigger=trigger, dialog=dialog)
         else :
             print("Response object has an unknown type.")
+
+        return status
 
 if __name__ == "__main__":
     pass

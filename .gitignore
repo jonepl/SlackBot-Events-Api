@@ -116,3 +116,6 @@ junk.txt
 notes.txt
 require.txt
 testMain.py
+
+# Ignore test services
+services/scripts/GrowthAnalysis/

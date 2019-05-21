@@ -4,7 +4,7 @@ Description: Entry point for Events API Slack application
 '''
 
 import SlackEventsApi
-from app.FinanceBot import FinanceBot
+from app.Slackbot import Slackbot
 import json, argparse, sys, os
 
 config = {}
@@ -21,8 +21,8 @@ def main():
 
     args = prepCmdArgs()
     try:
-
-        myBot = FinanceBot(config, sConfig, args.debug)
+        # TODO: figure out how to integration SlackEventsApi and SlackBot
+        myBot = Slackbot(config, sConfig, args.debug)
         myBot.getServiceHandler().validateConfig()
         SlackEventsApi.financeBot = myBot
         SlackEventsApi.listen(args.debug)
