@@ -3,7 +3,7 @@ File: main.py
 Description: Entry point for Events API Slack application
 '''
 
-import SlackEventsApi
+import app.SlackEventsApi as SlackEventsApi
 from app.Slackbot import Slackbot
 import json, argparse, sys, os
 
@@ -21,11 +21,8 @@ def main():
 
     args = prepCmdArgs()
     try:
-        # TODO: figure out how to integration SlackEventsApi and SlackBot
-        myBot = Slackbot(config, sConfig, args.debug)
-        myBot.getServiceHandler().validateConfig()
-        SlackEventsApi.financeBot = myBot
-        SlackEventsApi.listen(args.debug)
+        slackbot = Slackbot(config, sConfig, args.debug)
+        SlackEventsApi.start(slackbot, args.debug)
 
     except Exception as e:
         print("Exception: " + str(e))
