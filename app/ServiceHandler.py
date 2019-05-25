@@ -18,6 +18,7 @@ class ServiceHandler(Thread) :
         Thread.__init__(self)
         self.financeBot = financeBot
         self.debug = debug
+        self.validateConfig(sConfig)
         self.services = sConfig
         self.serviceNames = self.getServicesNames()
         self.runnableServices = _initRunnableServices(self.serviceNames)
@@ -122,24 +123,20 @@ class ServiceHandler(Thread) :
                 service = self.getService(message.get("user"), _id)
                 serviceName = service.get("name")
 
-                serviceDesc = self.getServiceDescription(serviceName)
-
-                response = self.message.blockActionInfo(message, serviceName, serviceDesc)
+                response = self.message.blockActionServiceInfo(message, service)
                 self.financeBot.respond(response)
-            
 
             elif("remove" in message.get("actions")[0].get("action_id")) :
-
+                
+                # Prepare service object
                 _id = message.get("actions")[0].get("value")
-                service = self.getService( message.get("user"), _id)
+                user = message.get("user")
+                service = self.getService(user, _id)
+                service["user"] = message.get("user")
+                successful = self.financeBot.getScheduler().removeSubscription(service)
+                
+                # Updates a message in slack
                 usersServices = self.financeBot.getScheduler().getFullSubscriptions(message.get("user"))
-
-                serviceName = service.get("name")
-
-                subscription = self.getServiceByName(serviceName)
-                subscription["user"] = message.get("user")
-                successful = self.financeBot.getScheduler().removeSubscription(subscription)
-
                 response = self.message.blockActionRemove(message, usersServices, service, successful)
                 self.financeBot.respond(response)
 
@@ -154,13 +151,12 @@ class ServiceHandler(Thread) :
             # TODO: handle no thanks response from my subscriptions, not subscribed no thanks and sure case
             elif("subscribe" in message.get("actions")[0].get("action_id")) :
                 resp = message.get("actions")[0].get("text")
-                if( "sure" in resp.get("text").lower() ) :
+                if( "subscribe" in resp.get("text").lower() ) :
                     # FIXME Bad code
-                    blocks = self.listServices(self.services)
-                    if(len(blocks) > 0) :
-                        self.financeBot.respond(message, text="", rType='text', blocks=blocks)
-                    else :
-                        self.financeBot.respond(message, text="There are no available services", rType='text')
+                    serviceName = message.get("actions")[0].get("value")
+                    arguments = self.getServiceArguments(serviceName)
+                    response = self.message.interactiveSubscription(message, self.financeBot.getScheduler().getPeriodicity(), arguments, serviceName)
+                    self.financeBot.respond(response)
 
         else :
             print("Some thing bad happened")
@@ -205,7 +201,15 @@ class ServiceHandler(Thread) :
 
             successful = self.financeBot.getScheduler().addSubscription(request)
             if(successful) :
-                self.financeBot.respond({}, text=":white_check_mark: Success... You've been subscribed.", rType='text', channel=message.get("channel"))
+                response = {
+                    "type" : "text",
+                    "user" : message.get("user"),
+                    "channel" : message.get("channel"),
+                    "text" : ":white_check_mark: Success... You've been subscribed.",
+                    "ts" : message.get("action_ts")
+                }
+                self.financeBot.respond(response)
+                #self.financeBot.respond({}, text=":white_check_mark: Success... You've been subscribed.", rType='text', channel=message.get("channel"))
             return True
 
         else :
@@ -261,30 +265,22 @@ class ServiceHandler(Thread) :
         for service in services :
             try:
                 _isValidName(service.get("name"))
-                _isValidPath(service.get("filepath"))
                 _isValidType(service.get("type"))
+                _isValidLanguage(service.get("language"))
+                _isValidFilepath(service.get("filepath"))
+                _isValidDescription(service.get("description"))
                 _isValidateArguments(service.get("arguments"))
-                _hasDuplicatedName(self.serviceNames)
                 #_validateCommands(service)
             except Exception as e:
                 print("Exception: {} for service: {}".format(e, service))
                 sys.exit(1)
 
     # Gets the details for a single service by name
-    def getServiceDetails(self, serviceName) :
+    def getServiceDetailsByName(self, serviceName) :
         for service in self.services :
             if(service['name'] ==  serviceName) :
                 return service
         return None
-
-    def getServiceFilePath(self, serviceName):
-        for service in self.services :
-            if(service['name'] ==  serviceName) :
-                return service['filepath']
-        return None
-
-    def getSupportedLanguages(self) :
-        return SUPPORTED_LANGUAGES
 
     def isValidServiceOutput(self, output) :
         valid = True
@@ -292,7 +288,7 @@ class ServiceHandler(Thread) :
 
             if(output['responseType'].lower() == 'file') :
                 try:
-                    _isValidPath(output['contents'])
+                    _isValidFilepath(output['contents'])
                 except Exception as e:
                     valid = False
                     print("Invalid Path: " + str(e))
@@ -314,33 +310,10 @@ class ServiceHandler(Thread) :
         
         return valid
 
-    # TODO fix messageInfo and response type
-    def generateSlackResponseOutput(self, output, subscription) :
-        
-        outputJson = json.loads(output.decode('utf-8'))
-
-        if('type' in outputJson and 'content' in outputJson) :
-            
-            if(outputJson['type'].lower() == 'file') :
-                try:
-                    _isValidPath(outputJson['content'])
-                except Exception as e:
-                    print("Invalid Path: " + str(e))
-                    return None
-
-            subscription['type'] = outputJson['type']
-            subscription['text'] = outputJson['content']
-
-            return subscription
-
-        else :
-            print("Invalid responseType")
-            return None  
-
     #TODO: Finsh this
     def runService(self, request) :
         # Write so runs without args works
-        service = self.getServiceDetails(request.get("name"))
+        service = self.getServiceDetailsByName(request.get("name"))
         service["user"] = request.get("user")
         service["channel"] = request.get("channel")
         
@@ -383,7 +356,7 @@ class ServiceHandler(Thread) :
         if('type' in outputJson and 'content' in outputJson) :
             if(outputJson['type'].lower() == 'file') :
                 try:
-                    _isValidPath(outputJson['content'])
+                    _isValidFilepath(outputJson['content'])
 
                 except Exception as e:
                     print("Invalid Path: " + str(e))
@@ -414,6 +387,7 @@ class ServiceHandler(Thread) :
         else :
             return []
 
+    # Consider removing
     def getUsersSubscriptionsByUserId(self, user) :
         subscriptions = []
         usersSubscriptions = self.financeBot.getScheduler().getUsersSubscriptions()
@@ -422,18 +396,6 @@ class ServiceHandler(Thread) :
             subscription["user"] = user
             subscriptions.append(subscription)
         return subscriptions
-
-    # FIXME createListServiceBlock ask to subscribe to services. if no service don't do this
-    def listServices(self, services) :
-        return self.financeBot.getSlackMessageBuilder().createListServiceBlock(services, buttonText="Info", heading="*Here are all the runnable services*")
-
-    def listMyService(self, services) :
-        return self.financeBot.getSlackMessageBuilder().createListServiceBlock(services, buttonText="Remove", heading="*Here are all the services you are subscribe to:*")
-
-    def getServiceDescription(self, serviceName) :
-        for service in self.services :
-            if(service.get("name") == serviceName) :
-                return service.get("description")
 
     def getServiceByName(self, serviceName) :
         for service in self.services :
@@ -446,8 +408,10 @@ class ServiceHandler(Thread) :
         if( bson.objectid.ObjectId.is_valid(_id) ) :
             service = self.financeBot.getScheduler().getSubscriptionById(user, _id)
         else :
-            service = self.getServiceByName(_id)
-
+            for svc in self.services :
+                if(svc.get("name") == _id) :
+                    service = svc
+                    break
         return service
 
     def isSubscriptionRequest(self, message) :
@@ -491,6 +455,7 @@ def _initRunnableServices(serviceNames) :
     return runnableServices
 
 def _isValidName(name) :
+    #TODO Determine string length
     if(not name) :
         raise Exception("{} is an invalid service name".format(name))
 
@@ -498,29 +463,25 @@ def _isValidType(sType) :
     if(sType.lower() != "script" and sType.lower() != "api") :
         raise Exception("{} is an invalid service type".format(sType))
 
+def _isValidLanguage(language) :
+    if(language not in SUPPORTED_LANGUAGES) : 
+        raise Exception("{} is not a supported language".format(language))
+
+# TODO: Is this needed
+def _isValidFilepath(path) :
+    if(not os.path.exists(path)) :
+        raise Exception("{} is an invalid fil path".format(path))   
+
+def _isValidDescription(description) :
+    if(not description) :
+        raise Exception("{} is an invalid service description".format(description))
+
 def _isValidateArguments(arguments) :
     for argument in arguments :
-        if(argument.get("name") == None and argument.get("dataType") == None) :
-            raise Exception("{} is an invalid service type".format(sType))
+        if(argument.get("name") == None or argument.get("dataType") == None or argument.get("flag") == None or argument.get("placeholder") == None) :
+            raise Exception("{} must have name, dataType and placeholder".format(arguement))
         if(argument.get("name") == "" or argument.get("dataType") not in ["string", "int"]) :
-            raise Exception("{} is an invalid service type".format(sType))
-
-def _isValidPath(path) :
-    if(not os.path.exists(path) and 'internal' != path.lower()) :
-        raise Exception("{} is an invalid fil path".format(path))
-    
-def _isValidLanguage(language) :
-    if(not language in SUPPORTED_LANGUAGES) :
-        raise Exception("{} is an unsupported language".format(language))
-
-def _isValidEntrypoint(path, entrypoint) :
-    fullpath = "{}/{}".format(path, entrypoint)
-    if(not os.path.isfile(fullpath) and 'internal' != path.lower()) :
-        raise Exception("{} is an invalid entrypoint point".format(fullpath))
-
-def _hasDuplicatedName(services) :
-    if(len(services) != len(set(services))) :
-        raise Exception("Duplicate Service names found. Please use unique Service Names.")
+            raise Exception("{} is an invalid service type".format(arguement))
 
 def _validateCommands(service):
 

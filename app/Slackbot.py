@@ -31,7 +31,7 @@ class Slackbot(Thread) :
         self.startUpThreads()
 
     # Direct requests to correct handler
-    # NOTE: This maybe method to perform single cast updates
+    # TODO: This maybe method to perform single cast updates
     def route(self, message) :
 
         handler = message.get("handler")
@@ -105,7 +105,7 @@ class Slackbot(Thread) :
         # Required Values
         channel = response.get("channel")
         text = response.get("text")
-        # Optional Values FIXME
+        # Optional Values
         if(response.get("blocks") != None) : blocks = response.get("blocks")
         if(response.get("attachments") != None) : attachments = response.get("attachments")
         if(response.get("filepath") != None) : filepath = response.get("filepath")

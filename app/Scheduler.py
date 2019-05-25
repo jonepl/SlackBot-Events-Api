@@ -155,14 +155,15 @@ class Scheduler(Thread) :
     # Removes schedule jobs from schedule
     def unscheduleJob(self, subscription) :
 
-        status = True
+        status = False
 
-        if(self.debug) : logger.debug("Unscheduling Job ...")
+        #if(self.debug) : logger.debug("Unscheduling Job ...")
 
         tag = subscription.get("_id")
         
-        # : Figure out if a status can be evaluated
-        schedule.clear(tag)
+        if(tag != None) :
+            schedule.clear(tag)
+            status = True
 
         return status
 
@@ -180,6 +181,7 @@ class Scheduler(Thread) :
         successful = False
 
         if(True) :
+
             dbResult = self.collection.insert_one(subscription)
             successful = dbResult.acknowledged
             if(successful) : 
@@ -323,9 +325,10 @@ class Scheduler(Thread) :
             for userSubscription in userSubscriptions :
                 for service in self.services :
                     if(userSubscription.get("name") == service.get("name")) :
-
-                        service["_id"] = userSubscription.get("_id")
-                        service["user"] = userSubscription.get("user")
-                        subscriptions.append(service)
+                        subscription = service.copy()
+                        subscription["_id"] = userSubscription.get("_id")
+                        subscription["user"] = userSubscription.get("user")
+                        subscription["description"] = userSubscription.get("description")
+                        subscriptions.append(subscription)
             return subscriptions
 

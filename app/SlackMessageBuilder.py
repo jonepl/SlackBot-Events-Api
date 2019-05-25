@@ -25,134 +25,134 @@ class SlackMessageBuilder():
         
 
     # Creates a dialog for user to enter arguments to run the service
-    def createServiceDialog(self, title, callbackId, serviceName, arguments=[]) :
-        """ Creates a service dialog for the finance bot finance 
-        Paramaters
-            title - String
-            callbackId - String
-            serviceName - name of the service
-            arguments - Service Arguements
-        """
-        serviceDialog = {}
+    # def createServiceDialog(self, title, callbackId, serviceName, arguments=[]) :
+    #     """ Creates a service dialog for the finance bot finance 
+    #     Paramaters
+    #         title - String
+    #         callbackId - String
+    #         serviceName - name of the service
+    #         arguments - Service Arguements
+    #     """
+    #     serviceDialog = {}
         
-        if(len(arguments) != 0) :
-            dialog = self.dialog.newDialog(title, callbackId, state=serviceName)
+    #     if(len(arguments) != 0) :
+    #         dialog = self.dialog.newDialog(title, callbackId, state=serviceName)
 
-            if(len(arguments) != 0) :
-                for argument in arguments :
-                    dialog.addTextElement(argument.get("name"), argument.get("name").lower(), argument.get("placeholder"))
-            serviceDialog = dialog.build()
+    #         if(len(arguments) != 0) :
+    #             for argument in arguments :
+    #                 dialog.addTextElement(argument.get("name"), argument.get("name").lower(), argument.get("placeholder"))
+    #         serviceDialog = dialog.build()
 
-        return serviceDialog
+    #     return serviceDialog
 
-    # 
-    def createSubscriptionDialog(self, title, callbackId, serviceName, periodicity, arguments=[]) :
-        """ Creates a service dialog for the finance bot app 
-        Paramaters
-            title - String
-            callbackId - String
-            serviceName - name of the service
-            periodicity - Array of periods
-            arguments - Service Arguements
-        """
-        subscriptionDialog = {}
 
-        if(len(arguments) != 0) :
-            dialog = self.dialog.newDialog(title, callbackId, state=serviceName)
+    # def createSubscriptionDialog(self, title, callbackId, serviceName, periodicity, arguments=[]) :
+    #     """ Creates a service dialog for the finance bot app 
+    #     Paramaters
+    #         title - String
+    #         callbackId - String
+    #         serviceName - name of the service
+    #         periodicity - Array of periods
+    #         arguments - Service Arguements
+    #     """
+    #     subscriptionDialog = {}
 
-            dialog.addTextElement("Description", "description", placeholder="Description")
-            dialog.addSelectElement("Duration", "duration", options=periodicity)
-            dialog.addTextElement("Time", "time", placeholder="8AM or 11:17PM")
+    #     if(len(arguments) != 0) :
+    #         dialog = self.dialog.newDialog(title, callbackId, state=serviceName)
 
-            if(len(arguments) != 0) :
-                for argument in arguments :
-                    dialog.addTextElement(argument.get("name"), argument.get("name").lower(), placeholder=argument.get("placeholder"))
+    #         dialog.addTextElement("Description", "description", placeholder="Description")
+    #         dialog.addSelectElement("Duration", "duration", options=periodicity)
+    #         dialog.addTextElement("Time", "time", placeholder="8AM or 11:17PM")
 
-            subscriptionDialog = dialog.build()
+    #         if(len(arguments) != 0) :
+    #             for argument in arguments :
+    #                 dialog.addTextElement(argument.get("name"), argument.get("name").lower(), placeholder=argument.get("placeholder"))
+
+    #         subscriptionDialog = dialog.build()
         
-        return subscriptionDialog
+    #     return subscriptionDialog
 
-    def createMessageAttachment(self, text, callbackId, services=None) :
-        """ Creates a message attachment for the finance bot app 
-        Paramaters
-            text - text of the static select element
-            callbackId - String
-            servics - list of services
-        """
-        options = self._createAttachmentOptions(services)
-        actions = Actions().addSelect(name=action, text="Select a service...", options=options).build()
-        self.attachments.createAttachment(text=text, callbackId=callbackId,  actions=actions)
+    # def createMessageAttachment(self, text, callbackId, services=None) :
+    #     """ Creates a message attachment for the finance bot app 
+    #     Paramaters
+    #         text - text of the static select element
+    #         callbackId - String
+    #         servics - list of services
+    #     """
+    #     options = self._createAttachmentOptions(services)
+    #     actions = Actions().addSelect(name=action, text="Select a service...", options=options).build()
+    #     self.attachments.createAttachment(text=text, callbackId=callbackId,  actions=actions)
 
-        return attachments
+    #     return attachments
     
-    def _createAttachmentOptions(self, services) :
-        options = []
+    # def _createAttachmentOptions(self, services) :
+    #     options = []
 
-        for service in services :
-            text = service.get("name")
-            value = service.get("_id") if service.get("_id") != None else service.get("name")
-            description = service.get("description")
-            option = self.getAttachmentOption(text, value, description)
-            options.append(option)
+    #     for service in services :
+    #         text = service.get("name")
+    #         value = service.get("_id") if service.get("_id") != None else service.get("name")
+    #         description = service.get("description")
+    #         option = self.getAttachmentOption(text, value, description)
+    #         options.append(option)
         
-        return options
+    #     return options
 
-    def getAttachmentOption(self, text, value, description="") :
-        """
-        Parameters:
-            text - String: 
-            value - String:
-        """
-        option =  {
-            "text" : text,
-            "value" : value
-        }
+    # def getAttachmentOption(self, text, value, description="") :
+    #     """
+    #     Parameters:
+    #         text - String: 
+    #         value - String:
+    #     """
+    #     option =  {
+    #         "text" : text,
+    #         "value" : value
+    #     }
 
-        if(len(description) > 0) : option["description"] = description
+    #     if(len(description) > 0) : option["description"] = description
 
-        return option
+    #     return option
 
-    def createListServiceBlock(self, services, buttonText="", heading="") :
-        """ Creates a service dialog for the finance bot finance 
-        Paramaters
-            services - String
-            buttonText - String
-            heading - name of the service
-        """
-        blocks = Blocks()
-        if(services != None) :
-            blocks.addSection(heading, plain=False)
-            for service in services :
-                text = self.getDescriptionValue(service)
-                accessory = self.accessory.createButton(buttonText, buttonText.lower(), value=service.get("name"))
-                blocks.addSection(text, accessory=accessory, plain=False)
+    # def createListServiceBlock(self, services, buttonText="", heading="") :
+    #     """ Creates a service dialog for the finance bot finance 
+    #     Paramaters
+    #         services - String
+    #         buttonText - String
+    #         heading - name of the service
+    #     """
+    #     blocks = Blocks()
+    #     if(services != None) :
+    #         blocks.addSection(heading, plain=False)
+    #         for service in services :
+    #             text = self.getDescriptionValue(service)
+    #             accessory = self.accessory.createButton(buttonText, buttonText.lower(), value=service.get("name"))
+    #             blocks.addSection(text, accessory=accessory, plain=False)
 
-        return blocks.getBlocks()
+    #     return blocks.getBlocks()
 
-    def getDescriptionValue(self, service) :
+    # def getDescriptionValue(self, service) :
 
-        serviceName = "_"+service.get("name")+"_"
-        description = ""
-        if(len(service.get("description")) > 56) :
-            description = service.get("description")[0:57]+"..."
-        else :
-            description = service.get("description")
+    #     serviceName = "_"+service.get("name")+"_"
+    #     description = ""
+    #     if(len(service.get("description")) > 56) :
+    #         description = service.get("description")[0:57]+"..."
+    #     else :
+    #         description = service.get("description")
 
-        return serviceName + "\n" + description
+    #     return serviceName + "\n" + description
 
-    def listMyServicesEmpty(self) :
-        blocks = Blocks()
-        blocks.addSection("You are not subscribed to any services. Would you like to view some services that you can subscribe to?", plain=False)
-        elements = BlockElements().addButton("Sure", "subscribe", value="subscribe").addButton("No thanks", "no thanks", value="no thanks").getBlockElements()
-        blocks.addAction(elements, blockId="subscribe")
-        return blocks.getBlocks()
+    # def listMyServicesEmpty(self) :
+    #     blocks = Blocks()
+    #     blocks.addSection("You are not subscribed to any services. Would you like to view some services that you can subscribe to?", plain=False)
+    #     elements = BlockElements().addButton("Sure", "subscribe", value="subscribe").addButton("No thanks", "no thanks", value="no thanks").getBlockElements()
+    #     blocks.addAction(elements, blockId="subscribe")
+    #     return blocks.getBlocks()
 
-    # Deprecated
-    def updateListMyServices(self, response) :
+    # # Deprecated
+    # def updateListMyServices(self, response) :
 
-        blocks = Blocks()
-        blocks.addSection("You are not subscribed to any services. Would you like to view some services that you can subscribe to?\n" + response + " selected.", plain=False)
-        return blocks.getBlocks()
+    #     blocks = Blocks()
+    #     blocks.addSection("You are not subscribed to any services. Would you like to view some services that you can subscribe to?\n" + response + " selected.", plain=False)
+    #     return blocks.getBlocks()
 
     def newDialog(self, title="", callbackId="", elements=[], state="", submitLabel="Submit", notifyOnCancel=False) :
         self.dialog = Dialog(title, callbackId, [], state, submitLabel, notifyOnCancel)
@@ -257,7 +257,6 @@ class Actions() :
 
     def build(self) :
         return self.actions
-
 
     def getConfirmObject(self, title="Confirm", text="Are you sure?", okText="Yes", dismissText="No") :
         """

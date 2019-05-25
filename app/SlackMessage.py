@@ -204,7 +204,7 @@ class SlackMessage():
         
         return response
 
-    def blockActionInfo(self, message, serviceName, serviceInfo ) :
+    def blockActionServiceInfo(self, message, service) :
         
         response = {
             "type" : "text",
@@ -212,7 +212,11 @@ class SlackMessage():
             "channel" : message.get("channel"),
         }
 
-        response["text"] = "*Service name*: " + serviceName + "\n*Description*: "+ serviceInfo
+        blocks = self._createListServiceBlock([service], buttonText="Subscribe", action="subscribe", heading="Here you go :point_down::skin-tone-3:")
+        if(len(blocks) > 0) :
+            response["blocks"] = blocks
+        else :
+            response["text"] = "I was unable to subscribe you to " + service.get("name")
 
         return response
 

@@ -1,5 +1,5 @@
 '''
-File: SlackEventHandler.py
+File: SlackEventsApi.py
 Description: Main Adapter use to interface with Slack's Event API adapter
 Info: List of Events can be found https://api.slack.com/events. Make 
       sure to Add Bot User Event in the Slack Event Subscriptions
@@ -17,12 +17,13 @@ financeBot = None
 app = Flask(__name__)
 slack_events_adapter = SlackEventAdapter(config.get("slack_signing_secret"), "/slack/events", app)
 
-# Start listening on configuration port
-def listen(debug) :
+# Start listening on configuration port for Slackbot
+def start(bot, debug) :
+    global financeBot
+    financeBot = bot
     app.run(port=config['port'])
 
 ''' Custom API Endpoints '''
-
 # Handles all slash commands. You must configure slash commands within your app at www.api.slack.com
 @app.route("/slash", methods=['POST'])
 def handleSlashCommand():
@@ -48,7 +49,6 @@ def handleDialog() :
     return Response(), 200
 
 ''' Slack API Endpoints via https://api.slack.com/events '''
-
 # A message was sent to a channel
 @slack_events_adapter.on("message")
 def handle_message(event_data):
